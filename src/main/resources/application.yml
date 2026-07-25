@@ -5,8 +5,9 @@
 # All secrets are sourced from environment variables — never hardcode
 # credentials here. Required at runtime:
 #   DB_USERNAME, DB_PASSWORD        - PostgreSQL credentials
+#   JWT_SECRET                      - base64-encoded, >= 32 bytes (HS256).
+#                                     Generate with: openssl rand -base64 32
 # Reserved for future use (not read yet, no code depends on them):
-#   JWT_SECRET                      - token signing key, once auth is built
 #   PLAID_CLIENT_ID, PLAID_SECRET   - Plaid API credentials, once integrated
 
 spring:
@@ -38,3 +39,9 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      expiration-ms: ${JWT_EXPIRATION_MS:3600000}
