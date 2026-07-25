@@ -1,0 +1,40 @@
+# Common configuration shared by all profiles.
+# Profile-specific overrides (pool sizing, logging, CORS) live in
+# application-dev.yml / application-prod.yml.
+#
+# All secrets are sourced from environment variables — never hardcode
+# credentials here. Required at runtime:
+#   DB_USERNAME, DB_PASSWORD        - PostgreSQL credentials
+# Reserved for future use (not read yet, no code depends on them):
+#   JWT_SECRET                      - token signing key, once auth is built
+#   PLAID_CLIENT_ID, PLAID_SECRET   - Plaid API credentials, once integrated
+
+spring:
+  application:
+    name: financial-portfolio-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:financial_portfolio}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema is owned by Flyway migrations, not Hibernate. This only
+      # verifies the entity mappings match the migrated schema at startup.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+server:
+  port: ${SERVER_PORT:8080}

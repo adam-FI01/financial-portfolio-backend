@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(DB_USERNAME=postgres DB_PASSWORD=devpass SPRING_PROFILES_ACTIVE=dev nohup ./mvnw -q spring-boot:run)",
+      "Bash(echo \"PID: $!\")",
+      "Read(//tmp/**)"
+    ]
+  }
+}
