@@ -25,10 +25,12 @@ public class TransactionController {
     public PageResponse<TransactionResponse> list(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        return transactionService.listForCurrentUser(authentication, safePage, safeSize);
+        return transactionService.listForCurrentUser(authentication, safePage, safeSize, search, category);
     }
 
 }

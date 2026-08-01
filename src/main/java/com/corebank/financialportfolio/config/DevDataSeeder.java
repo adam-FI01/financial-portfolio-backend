@@ -28,9 +28,10 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 /**
- * Seeds a realistic, varied dataset (4 institutions, 9 accounts, 5 holdings,
- * ~75 transactions spanning the last 60 days) for a fixed dev-only test user,
- * so the read endpoints have enough variety to build real features against.
+ * Seeds a realistic, varied dataset (5 institutions, 10 accounts, 25 holdings
+ * across 2 investment accounts, ~75 transactions spanning the last 60 days)
+ * for a fixed dev-only test user, so the read endpoints have enough variety
+ * to build real features against.
  *
  * Gated to the "dev" profile — {@code @Profile("dev")} means this bean isn't
  * even created, let alone run, unless spring.profiles.active includes "dev".
@@ -153,34 +154,39 @@ public class DevDataSeeder implements ApplicationRunner {
         Institution chase = institutionRepository.save(new Institution(user, "Chase"));
         Institution fidelity = institutionRepository.save(new Institution(user, "Fidelity"));
         Institution sofi = institutionRepository.save(new Institution(user, "SoFi"));
+        Institution robinhood = institutionRepository.save(new Institution(user, "Robinhood"));
 
         Account firstHorizonChecking = accountRepository.save(withAvailable(
-                new Account(firstHorizon, "Everyday Checking", AccountType.CHECKING, new BigDecimal("2543.18")),
-                new BigDecimal("2493.18")));
+                new Account(firstHorizon, "Everyday Checking", AccountType.CHECKING, new BigDecimal("8543.18")),
+                new BigDecimal("8493.18")));
 
         Account chaseChecking = accountRepository.save(withAvailable(
-                new Account(chase, "Total Checking", AccountType.CHECKING, new BigDecimal("6821.44")),
-                new BigDecimal("6821.44")));
+                new Account(chase, "Total Checking", AccountType.CHECKING, new BigDecimal("14821.44")),
+                new BigDecimal("14821.44")));
 
         Account sofiSavings = accountRepository.save(withAvailable(
-                new Account(sofi, "Savings", AccountType.SAVINGS, new BigDecimal("15420.77")),
-                new BigDecimal("15420.77")));
+                new Account(sofi, "Savings", AccountType.SAVINGS, new BigDecimal("52420.77")),
+                new BigDecimal("52420.77")));
 
-        Account firstHorizonCard = accountRepository.save(withAvailable(
+        Account firstHorizonCard = accountRepository.save(withCreditLimit(withAvailable(
                 new Account(firstHorizon, "Rewards Credit Card", AccountType.CREDIT_CARD, new BigDecimal("-812.44")),
-                new BigDecimal("4187.56")));
+                new BigDecimal("4187.56")), new BigDecimal("5000.00")));
 
-        Account chaseCard = accountRepository.save(withAvailable(
+        Account chaseCard = accountRepository.save(withCreditLimit(withAvailable(
                 new Account(chase, "Sapphire Preferred", AccountType.CREDIT_CARD, new BigDecimal("-2140.65")),
-                new BigDecimal("7859.35")));
+                new BigDecimal("7859.35")), new BigDecimal("10000.00")));
 
-        Account sofiCard = accountRepository.save(withAvailable(
+        Account sofiCard = accountRepository.save(withCreditLimit(withAvailable(
                 new Account(sofi, "SoFi Credit Card", AccountType.CREDIT_CARD, new BigDecimal("-365.20")),
-                new BigDecimal("4634.80")));
+                new BigDecimal("4634.80")), new BigDecimal("5000.00")));
 
         Account fidelityBrokerage = accountRepository.save(withAvailable(
-                new Account(fidelity, "Brokerage Account", AccountType.INVESTMENT, new BigDecimal("13963.63")),
-                new BigDecimal("842.15")));
+                new Account(fidelity, "Brokerage Account", AccountType.INVESTMENT, new BigDecimal("470900.00")),
+                new BigDecimal("2500.00")));
+
+        Account robinhoodBrokerage = accountRepository.save(withAvailable(
+                new Account(robinhood, "Individual Brokerage", AccountType.INVESTMENT, new BigDecimal("112500.00")),
+                new BigDecimal("1200.00")));
 
         Account chaseAutoLoan = accountRepository.save(
                 new Account(chase, "Auto Loan", AccountType.LOAN, new BigDecimal("-18450.32")));
@@ -188,7 +194,8 @@ public class DevDataSeeder implements ApplicationRunner {
         Account sofiStudentLoan = accountRepository.save(
                 new Account(sofi, "Student Loan", AccountType.LOAN, new BigDecimal("-24680.00")));
 
-        seedHoldings(fidelityBrokerage);
+        seedHoldings(fidelityBrokerage, FIDELITY_HOLDINGS);
+        seedHoldings(robinhoodBrokerage, ROBINHOOD_HOLDINGS);
 
         Random random = new Random(RANDOM_SEED);
         LocalDate today = LocalDate.now();
@@ -213,36 +220,84 @@ public class DevDataSeeder implements ApplicationRunner {
         transactionCount += seedRecurringTransactions(sofiStudentLoan, "SoFi Student Loan Payment", "Loan Payment",
                 new BigDecimal("-280.00"), 30, 3, today);
 
-        log.info("Seeded dev data for {}: 4 institutions, 9 accounts, 5 holdings, {} transactions",
-                TEST_USER_EMAIL, transactionCount);
+        log.info("Seeded dev data for {}: 5 institutions, 10 accounts, {} holdings, {} transactions",
+                TEST_USER_EMAIL, FIDELITY_HOLDINGS.size() + ROBINHOOD_HOLDINGS.size(), transactionCount);
     }
 
-    private void seedHoldings(Account brokerage) {
-        record HoldingSeed(String symbol, String name, BigDecimal shares, BigDecimal costBasis,
-                            BigDecimal currentValue) {
-        }
+    private record HoldingSeed(String symbol, String name, BigDecimal shares, BigDecimal costBasis,
+                                BigDecimal currentValue) {
+    }
 
-        List<HoldingSeed> seeds = List.of(
-                new HoldingSeed("VTSAX", "Vanguard Total Stock Market Index Fund",
-                        new BigDecimal("45.123456"), new BigDecimal("4200.00"), new BigDecimal("4850.32")),
-                new HoldingSeed("FXAIX", "Fidelity 500 Index Fund",
-                        new BigDecimal("22.500000"), new BigDecimal("3100.00"), new BigDecimal("3567.89")),
-                new HoldingSeed("VTIAX", "Vanguard Total International Stock Index Fund",
-                        new BigDecimal("60.789000"), new BigDecimal("1800.00"), new BigDecimal("1745.10")),
-                new HoldingSeed("VBTLX", "Vanguard Total Bond Market Index Fund",
-                        new BigDecimal("100.250000"), new BigDecimal("2500.00"), new BigDecimal("2410.55")),
-                new HoldingSeed("SWPPX", "Schwab S&P 500 Index Fund",
-                        new BigDecimal("15.333000"), new BigDecimal("1200.00"), new BigDecimal("1389.77"))
-        );
+    private static final List<HoldingSeed> FIDELITY_HOLDINGS = List.of(
+            new HoldingSeed("VTSAX", "Vanguard Total Stock Market Index Fund",
+                    new BigDecimal("950.123456"), new BigDecimal("115000.00"), new BigDecimal("140000.00")),
+            new HoldingSeed("FXAIX", "Fidelity 500 Index Fund",
+                    new BigDecimal("480.500000"), new BigDecimal("78000.00"), new BigDecimal("90000.00")),
+            new HoldingSeed("VTIAX", "Vanguard Total International Stock Index Fund",
+                    new BigDecimal("1200.789000"), new BigDecimal("36000.00"), new BigDecimal("40000.00")),
+            new HoldingSeed("VBTLX", "Vanguard Total Bond Market Index Fund",
+                    new BigDecimal("3200.250000"), new BigDecimal("34500.00"), new BigDecimal("35000.00")),
+            new HoldingSeed("SWPPX", "Schwab S&P 500 Index Fund",
+                    new BigDecimal("250.333000"), new BigDecimal("12800.00"), new BigDecimal("15000.00")),
+            new HoldingSeed("VYM", "Vanguard High Dividend Yield ETF",
+                    new BigDecimal("210.500000"), new BigDecimal("19000.00"), new BigDecimal("22000.00")),
+            new HoldingSeed("VUG", "Vanguard Growth ETF",
+                    new BigDecimal("145.250000"), new BigDecimal("15800.00"), new BigDecimal("18500.00")),
+            new HoldingSeed("VNQ", "Vanguard Real Estate ETF",
+                    new BigDecimal("110.750000"), new BigDecimal("10500.00"), new BigDecimal("9200.00")),
+            new HoldingSeed("QQQ", "Invesco QQQ Trust",
+                    new BigDecimal("68.300000"), new BigDecimal("21000.00"), new BigDecimal("27000.00")),
+            new HoldingSeed("VXUS", "Vanguard Total International Stock ETF",
+                    new BigDecimal("195.600000"), new BigDecimal("12000.00"), new BigDecimal("11300.00")),
+            new HoldingSeed("BND", "Vanguard Total Bond Market ETF",
+                    new BigDecimal("190.400000"), new BigDecimal("15200.00"), new BigDecimal("14700.00")),
+            new HoldingSeed("VIG", "Vanguard Dividend Appreciation ETF",
+                    new BigDecimal("47.800000"), new BigDecimal("7600.00"), new BigDecimal("8900.00")),
+            new HoldingSeed("SCHD", "Schwab US Dividend Equity ETF",
+                    new BigDecimal("172.900000"), new BigDecimal("11900.00"), new BigDecimal("13400.00")),
+            new HoldingSeed("VGT", "Vanguard Information Technology ETF",
+                    new BigDecimal("32.600000"), new BigDecimal("14500.00"), new BigDecimal("19800.00")),
+            new HoldingSeed("GLD", "SPDR Gold Shares",
+                    new BigDecimal("26.100000"), new BigDecimal("5800.00"), new BigDecimal("6100.00"))
+    );
 
+    private static final List<HoldingSeed> ROBINHOOD_HOLDINGS = List.of(
+            new HoldingSeed("SPY", "SPDR S&P 500 ETF Trust",
+                    new BigDecimal("55.400000"), new BigDecimal("24500.00"), new BigDecimal("31000.00")),
+            new HoldingSeed("IWM", "iShares Russell 2000 ETF",
+                    new BigDecimal("41.200000"), new BigDecimal("9400.00"), new BigDecimal("8700.00")),
+            new HoldingSeed("EFA", "iShares MSCI EAFE ETF",
+                    new BigDecimal("84.900000"), new BigDecimal("6000.00"), new BigDecimal("6300.00")),
+            new HoldingSeed("AGG", "iShares Core US Aggregate Bond ETF",
+                    new BigDecimal("102.300000"), new BigDecimal("10600.00"), new BigDecimal("10200.00")),
+            new HoldingSeed("ARKK", "ARK Innovation ETF",
+                    new BigDecimal("98.700000"), new BigDecimal("7200.00"), new BigDecimal("4100.00")),
+            new HoldingSeed("VTV", "Vanguard Value ETF",
+                    new BigDecimal("76.500000"), new BigDecimal("10900.00"), new BigDecimal("12800.00")),
+            new HoldingSeed("XLK", "Technology Select Sector SPDR Fund",
+                    new BigDecimal("68.100000"), new BigDecimal("12100.00"), new BigDecimal("16500.00")),
+            new HoldingSeed("XLF", "Financial Select Sector SPDR Fund",
+                    new BigDecimal("165.400000"), new BigDecimal("6800.00"), new BigDecimal("7400.00")),
+            new HoldingSeed("VEA", "Vanguard FTSE Developed Markets ETF",
+                    new BigDecimal("205.800000"), new BigDecimal("9900.00"), new BigDecimal("9600.00")),
+            new HoldingSeed("SCHB", "Schwab US Broad Market ETF",
+                    new BigDecimal("92.300000"), new BigDecimal("4900.00"), new BigDecimal("5900.00"))
+    );
+
+    private void seedHoldings(Account account, List<HoldingSeed> seeds) {
         for (HoldingSeed seed : seeds) {
             holdingRepository.save(new Holding(
-                    brokerage, seed.symbol(), seed.name(), seed.shares(), seed.costBasis(), seed.currentValue()));
+                    account, seed.symbol(), seed.name(), seed.shares(), seed.costBasis(), seed.currentValue()));
         }
     }
 
     private Account withAvailable(Account account, BigDecimal availableBalance) {
         account.setAvailableBalance(availableBalance);
+        return account;
+    }
+
+    private Account withCreditLimit(Account account, BigDecimal creditLimit) {
+        account.setCreditLimit(creditLimit);
         return account;
     }
 

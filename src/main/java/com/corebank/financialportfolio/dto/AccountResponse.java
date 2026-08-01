@@ -14,6 +14,7 @@ public record AccountResponse(
         AccountType type,
         BigDecimal currentBalance,
         BigDecimal availableBalance,
+        BigDecimal creditLimit,
         String currency,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
