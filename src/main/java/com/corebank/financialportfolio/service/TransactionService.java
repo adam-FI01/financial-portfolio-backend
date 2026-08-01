@@ -19,10 +19,11 @@ public class TransactionService {
     private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
-    public PageResponse<TransactionResponse> listForCurrentUser(Authentication authentication, int page, int size) {
+    public PageResponse<TransactionResponse> listForCurrentUser(
+            Authentication authentication, int page, int size, String search, String category) {
         var user = currentUserService.getCurrentUser(authentication);
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "transactionDate"));
-        var result = transactionRepository.findByAccountInstitutionUserId(user.getId(), pageable);
+        var result = transactionRepository.search(user.getId(), search, category, pageable);
 
         return new PageResponse<>(
                 result.getContent().stream().map(TransactionService::toResponse).toList(),

@@ -52,6 +52,9 @@ public class Account {
     @Column(name = "available_balance", precision = 19, scale = 4)
     private BigDecimal availableBalance;
 
+    @Column(name = "credit_limit", precision = 19, scale = 4)
+    private BigDecimal creditLimit;
+
     @Column(nullable = false)
     private String currency = "USD";
 

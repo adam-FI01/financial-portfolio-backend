@@ -34,6 +34,7 @@ public class AccountService {
                 account.getType(),
                 account.getCurrentBalance(),
                 account.getAvailableBalance(),
+                account.getCreditLimit(),
                 account.getCurrency(),
                 account.getCreatedAt(),
                 account.getUpdatedAt()
